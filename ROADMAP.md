@@ -27,12 +27,16 @@ HOVERBOARD is built incrementally. Each milestone should be implemented and test
 
 ## Step 3 — Supabase Setup
 
-- Create/configure Supabase project
-- Configure authentication
-- Create database schema
-- Configure storage
-- Apply security policies
-- Test database access and RLS
+- [x] Create/configure Supabase project
+- [x] Connect Supabase project to ChatGPT development workflow
+- [x] Create database schema
+- [x] Configure `avatars` Storage bucket for profile images
+- [x] Apply security policies
+- [x] Verify database tables and columns
+- [x] Verify RLS is enabled and policies exist
+- [x] Verify Storage bucket configuration
+
+**Status: COMPLETE**
 
 ## Step 4 — Application Setup
 

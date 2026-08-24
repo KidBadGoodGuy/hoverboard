@@ -1,14 +1,37 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase/client";
 
-export default async function SupabaseTestPage() {
-  const supabase = createClient();
-  const { error } = await supabase.from("dj_profiles").select("user_id").limit(1);
+export default function SupabaseTestPage() {
+  const [status, setStatus] = useState("Testing Supabase connection...");
+
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from("dj_profiles").select("user_id").limit(1);
+
+        if (error) {
+          setStatus(`Connection needs attention: ${error.message}`);
+          return;
+        }
+
+        setStatus("Supabase connected");
+      } catch (error) {
+        setStatus(
+          `Connection needs attention: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    };
+
+    testConnection();
+  }, []);
 
   return (
     <main>
       <p>HOVERBOARD backend connection</p>
-      <h1>{error ? "Connection needs attention" : "Supabase connected"}</h1>
-      <p>{error ? error.message : "The HOVERBOARD app can communicate with Supabase."}</p>
+      <h1>{status}</h1>
     </main>
   );
 }

@@ -10,9 +10,12 @@ function getSupabaseUrl() {
     throw new Error("Supabase URL is not configured at runtime.");
   }
 
-  // The client needs the project URL, not the Data API /rest/v1 endpoint.
-  // Normalize a copied Data API URL so it cannot produce /rest/v1/rest/v1.
-  const projectUrl = rawUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
+  // Cloudflare/Supabase may provide the Data API URL. Normalize it to the
+  // project root so the SDK can append its own service paths correctly.
+  const projectUrl = rawUrl
+    .replace(/\/rest\/v1\/?$/, "")
+    .replace(/\/$/, "");
+
   const parsed = new URL(projectUrl);
 
   if (parsed.protocol !== "https:") {
@@ -27,49 +30,72 @@ export async function GET() {
 
   if (!key) {
     return NextResponse.json(
-      { connected: false, error: "Supabase publishable key is not configured at runtime." },
+      {
+        connected: false,
+        error: "Supabase publishable key is not configured at runtime.",
+      },
       { status: 500 }
     );
   }
 
   try {
     const url = getSupabaseUrl();
+
+    // This is the normal HOVERBOARD client configuration.
+    // The publishable key is intentionally used; a secret key must never be
+    // exposed to the browser or committed to the repository.
     const supabase = createClient(url, key);
 
-    // Verify the Data API itself without depending on a HOVERBOARD table existing yet.
-    const response = await fetch(`${url}/rest/v1/`, {
+    // Do NOT request /rest/v1/ here. Supabase intentionally protects the API
+    // root/OpenAPI endpoint from publishable keys. Instead, verify a real
+    // public Supabase service endpoint that accepts publishable keys.
+    const authResponse = await fetch(`${url}/auth/v1/settings`, {
       method: "GET",
-      headers: { apikey: key },
+      headers: {
+        apikey: key,
+      },
       cache: "no-store",
     });
 
-    if (!response.ok) {
-      const body = await response.text();
+    if (!authResponse.ok) {
+      const body = await authResponse.text();
       return NextResponse.json(
         {
           connected: false,
-          error: `Supabase Data API returned HTTP ${response.status}${body ? `: ${body.slice(0, 200)}` : ""}`,
+          error: `Supabase API returned HTTP ${authResponse.status}${body ? `: ${body.slice(0, 300)}` : ""}`,
         },
         { status: 502 }
       );
     }
 
-    // Initialize the same SDK used by HOVERBOARD so client configuration is verified too.
+    // Make a harmless SDK-level request too. This confirms the installed
+    // Supabase client can be initialized with the same URL/key pair used by
+    // the rest of the application. We don't query a HOVERBOARD table yet,
+    // because the schema is still being built in Step 4.
     if (!supabase) {
       throw new Error("Supabase client could not be initialized.");
     }
 
     return NextResponse.json({
       connected: true,
+      message: "Supabase is configured and reachable.",
       checks: {
         environment: true,
         projectUrl: true,
-        dataApi: true,
+        publishableKey: true,
+        supabaseApi: true,
         client: true,
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown Supabase connection error.";
-    return NextResponse.json({ connected: false, error: message }, { status: 500 });
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown Supabase connection error.";
+
+    return NextResponse.json(
+      { connected: false, error: message },
+      { status: 500 }
+    );
   }
 }

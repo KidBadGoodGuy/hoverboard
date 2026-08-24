@@ -1,205 +1,85 @@
-# HOVERBOARD
+# HOVERBOARD V1
 
-**Book. Perform. Get Paid.**
+> **Find the Gig. It’s on the Board.**
 
-HOVERBOARD is a modern booking platform that connects live performers with clients and venues while providing secure payments, automatic team payouts, and professional booking management.
+HOVERBOARD is a DJ gig-booking platform designed to make it easy for clients to find, book, and pay DJs and for solo DJs to find and manage gigs.
 
-The goal of HOVERBOARD is to become the most trusted platform for booking live entertainment by eliminating payment issues, simplifying event management, and creating a better experience for performers and clients.
+## V1 Scope
 
----
+HOVERBOARD V1 is intentionally small. It has exactly two user roles:
 
-# Vision
+- **Solo DJ** — creates a DJ profile, receives booking requests, manages gigs, and gets paid.
+- **Client** — searches for DJs, requests bookings, pays for bookings, and leaves reviews.
 
-To become the leading platform for booking, managing, and paying live performers worldwide.
+V1 does **not** include DJ teams, clubs/venues, other performer types, GPS verification, QR check-in, AI matching, payroll, or other advanced systems.
 
-HOVERBOARD is designed to remove the biggest frustrations in the live entertainment industry by providing secure payments, transparent bookings, verified users, and professional tools for everyone involved.
+## Core Booking Flow
 
----
+1. Client searches for DJs.
+2. Client views a DJ profile.
+3. Client chooses an event date/time and requests a booking.
+4. DJ accepts or declines.
+5. Client pays after the DJ accepts.
+6. The booking becomes confirmed after successful payment.
+7. DJ performs the gig.
+8. The booking is completed.
+9. DJ receives payment through the payment system.
+10. Client leaves a review.
 
-# Supported Users
+## Planned Technology
 
-### Solo Performers
+- **GitHub** — source code and version history.
+- **Codex** — AI development assistance.
+- **Supabase** — authentication, database, storage, and backend services.
+- **Cloudflare** — domain, DNS, security, and web infrastructure.
+- **Stripe** — payment processing.
 
-* DJs
-* Singers
-* Musicians
-* Dancers
-* MCs
-* Violinists
-* Saxophonists
-* Comedians
-* Other independent performers
+These services have separate responsibilities and should not be treated as interchangeable.
 
-### Teams
+## Repository Structure
 
-Groups of performers booking together under one profile.
+```text
+hoverboard/
+├── AGENTS.md
+├── PRODUCT.md
+├── DATABASE.md
+├── ROADMAP.md
+├── README.md
+├── .gitignore
+│
+├── docs/
+│   ├── business-rules.md
+│   ├── ui-guidelines.md
+│   ├── api.md
+│   └── features.md
+│
+├── app/
+├── backend/
+└── assets/
+```
 
-Examples:
+The application code is intentionally not being built during the foundation stage.
 
-* DJ + Singer
-* Full Band
-* Dance Crew
-* DJ + MC
-* Entertainment Company
+## Development Principles
 
-### Clients
+1. Keep V1 simple.
+2. Build one major feature at a time.
+3. Test features before moving forward.
+4. Protect user data from the beginning.
+5. Never store sensitive payment information directly in HOVERBOARD.
+6. Keep documentation synchronized with the actual product.
+7. Explain major architecture changes before making them.
+8. Do not add future features unless explicitly approved.
 
-Individuals or organizations booking performers for one-time events.
+## Current Status
 
-Examples:
+**Version:** HOVERBOARD V1  
+**Stage:** Step 1 — Project Foundation & Documentation
 
-* Weddings
-* Birthdays
-* Graduation Parties
-* Private Events
-* Corporate Events
+The repository foundation is being established before application development begins.
 
-### Clubs & Venues
+## Future Vision
 
-Businesses that regularly hire performers.
+After a successful DJ-only V1, HOVERBOARD may expand to other performers, teams, clubs/venues, advanced verification, AI matching, recurring bookings, payroll, equipment services, and other marketplace capabilities.
 
-Examples:
-
-* Nightclubs
-* Bars
-* Restaurants
-* Lounges
-* Hotels
-* Entertainment Venues
-
----
-
-# Core Features
-
-* Performer Profiles
-* Team Profiles
-* Client Dashboard
-* Venue Dashboard
-* Search & Discovery
-* Secure Booking Requests
-* Digital Contracts
-* Escrow Payments
-* Automatic Team Payment Splitting
-* QR Check-In & Check-Out
-* GPS Verification During Active Gigs
-* Reviews & Ratings
-* Reputation System
-* Messaging
-* Calendar Management
-* Club Payroll Management
-* Recurring Bookings
-* Notifications
-* Analytics Dashboard
-
----
-
-# Core Principles
-
-Every feature should follow these principles:
-
-1. Trust comes first.
-2. Payments must always be secure.
-3. The booking experience should be simple.
-4. Performers should never have to chase payments.
-5. Teams should receive automatic payout splitting.
-6. Clients should always know exactly what they are paying.
-7. The interface should remain clean and easy to use.
-8. Security is never optional.
-
----
-
-# Technology Stack (Planned)
-
-Frontend
-
-* React Native
-* Expo
-
-Backend
-
-* Supabase
-
-Database
-
-* PostgreSQL (Supabase)
-
-Authentication
-
-* Supabase Auth
-
-Payments
-
-* Stripe
-
-Version Control
-
-* GitHub
-
-AI Development
-
-* Codex
-
----
-
-# Repository Structure
-
-This repository contains the complete HOVERBOARD platform.
-
-* `/app` — Mobile application
-* `/backend` — Backend services and business logic
-* `/assets` — Images, icons, branding, and media
-* `/docs` — Product documentation and technical specifications
-
-Additional project documentation includes:
-
-* `AGENTS.md`
-* `PRODUCT.md`
-* `DATABASE.md`
-* `ROADMAP.md`
-
----
-
-# Development Philosophy
-
-Development should be incremental.
-
-Features should be built, tested, documented, and reviewed before moving to the next milestone.
-
-Major architectural decisions should be documented before implementation.
-
-Business rules should remain consistent across the entire application.
-
----
-
-# Current Status
-
-Phase: Planning
-
-Current Milestone:
-
-* Project Foundation
-
-Upcoming Milestones:
-
-1. Project Documentation
-2. Database Design
-3. Authentication
-4. Performer Profiles
-5. Booking System
-6. Payments
-7. QR Verification
-8. GPS Verification
-9. Team Management
-10. Club Management
-11. Reputation System
-12. Public Release (MVP)
-
----
-
-# Mission
-
-Create the easiest, safest, and most trusted platform for booking live performers while ensuring every successful performance ends with fast, reliable payment.
-
----
-
-© HOVERBOARD Project
+Future ideas must not complicate V1.

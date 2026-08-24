@@ -15,7 +15,7 @@ function getSupabaseUrl() {
   const projectUrl = rawUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
   const parsed = new URL(projectUrl);
 
-  if (!/^https?:$/.test(parsed.protocol)) {
+  if (parsed.protocol !== "https:") {
     throw new Error("Supabase URL must use HTTPS.");
   }
 
@@ -39,10 +39,7 @@ export async function GET() {
     // Verify the Data API itself without depending on a HOVERBOARD table existing yet.
     const response = await fetch(`${url}/rest/v1/`, {
       method: "GET",
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      },
+      headers: { apikey: key },
       cache: "no-store",
     });
 
@@ -57,7 +54,7 @@ export async function GET() {
       );
     }
 
-    // Also initialize the SDK so the exact client configuration used by HOVERBOARD is verified.
+    // Initialize the same SDK used by HOVERBOARD so client configuration is verified too.
     if (!supabase) {
       throw new Error("Supabase client could not be initialized.");
     }

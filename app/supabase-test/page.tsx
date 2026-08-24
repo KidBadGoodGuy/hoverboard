@@ -1,31 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "../../lib/supabase/client";
 
 export default function SupabaseTestPage() {
   const [status, setStatus] = useState("Testing Supabase connection...");
 
   useEffect(() => {
-    const testConnection = async () => {
-      try {
-        const supabase = createClient();
-        const { error } = await supabase.from("dj_profiles").select("user_id").limit(1);
-
-        if (error) {
-          setStatus(`Connection needs attention: ${error.message}`);
-          return;
+    fetch("/api/supabase-test")
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok || !result.connected) {
+          throw new Error(result.error ?? "Unknown connection error");
         }
-
         setStatus("Supabase connected");
-      } catch (error) {
-        setStatus(
-          `Connection needs attention: ${error instanceof Error ? error.message : "Unknown error"}`
-        );
-      }
-    };
-
-    testConnection();
+      })
+      .catch((error) => {
+        setStatus(`Connection needs attention: ${error.message}`);
+      });
   }, []);
 
   return (

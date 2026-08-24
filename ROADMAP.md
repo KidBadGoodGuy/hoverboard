@@ -11,13 +11,19 @@ HOVERBOARD is built incrementally. Each milestone should be implemented and test
 - [x] Establish AI agent rules
 - [x] Establish initial repository documentation
 
+**Status: COMPLETE**
+
 ## Step 2 — V1 Database Design
 
-- Finalize PostgreSQL schema
-- Define relationships and constraints
-- Define indexes
-- Define Row Level Security policies
-- Review booking status transitions
+- [x] Finalize PostgreSQL schema
+- [x] Define relationships and constraints
+- [x] Define indexes
+- [x] Define Row Level Security requirements
+- [x] Define booking status transitions
+- [x] Define payment-data boundaries
+- [x] Document the V1 schema boundary
+
+**Status: COMPLETE**
 
 ## Step 3 — Supabase Setup
 
@@ -26,6 +32,7 @@ HOVERBOARD is built incrementally. Each milestone should be implemented and test
 - Create database schema
 - Configure storage
 - Apply security policies
+- Test database access and RLS
 
 ## Step 4 — Application Setup
 

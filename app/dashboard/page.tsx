@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "../../lib/supabase/client";
@@ -16,7 +16,6 @@ export default function Dashboard() {
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [message, setMessage] = useState("");
-  const [form, setForm] = useState({ title: "", description: "", event_date: "", start_time: "", end_time: "", location: "", budget_min: "", budget_max: "", genres: "" });
 
   async function ensureProfile(supabase: ReturnType<typeof getSupabaseBrowserClient>, authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }) {
     const metadataRole = authUser.user_metadata?.role === "client" ? "client" : "dj";
@@ -72,16 +71,6 @@ export default function Dashboard() {
 
   useEffect(() => { void load(); }, []);
 
-  async function createGig(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const supabase = getSupabaseBrowserClient();
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) return;
-    const { error } = await supabase.from("gigs").insert({ client_id: auth.user.id, title: form.title.trim(), description: form.description.trim() || null, event_date: form.event_date, start_time: form.start_time || null, end_time: form.end_time || null, location: form.location.trim(), budget_min: form.budget_min ? Number(form.budget_min) : null, budget_max: form.budget_max ? Number(form.budget_max) : null, genres: form.genres.split(",").map((x) => x.trim()).filter(Boolean), status: "open" });
-    setMessage(error ? error.message : "Gig posted!");
-    if (!error) { setForm({ title: "", description: "", event_date: "", start_time: "", end_time: "", location: "", budget_min: "", budget_max: "", genres: "" }); await load(); }
-  }
-
   async function decideApplication(application: Application, decision: "accepted" | "rejected") {
     const supabase = getSupabaseBrowserClient();
     const { data: auth } = await supabase.auth.getUser();
@@ -107,7 +96,7 @@ export default function Dashboard() {
     <main className="dashboard-page">
       <header className="topbar">
         <div><span className="brand">HOVERBOARD</span><span className="muted"> · {role === "dj" ? "DJ" : "Client"} Dashboard</span></div>
-        <div className="topbar-actions"><Link className="button primary" href="/discover">{discoveryLabel}</Link>{role === "dj" && <Link className="button" href="/profile">Edit profile</Link>}<button onClick={logout}>Log out</button></div>
+        <div className="topbar-actions"><Link className="button primary" href="/discover">{discoveryLabel}</Link>{role === "client" && <Link className="button primary" href="/gigs/new">Make a gig</Link>}{role === "dj" && <Link className="button" href="/profile">Edit profile</Link>}<button onClick={logout}>Log out</button></div>
       </header>
       <section className="dashboard-content">
         <div className="hero-small"><p className="eyebrow">WELCOME</p><h1>Hey, {name}.</h1><p>{role === "dj" ? "Find your next gig." : "Put your next gig on the Board."}</p></div>
@@ -117,12 +106,12 @@ export default function Dashboard() {
         {message && <div className="notice">{message}</div>}
         {role === "client" ? (
           <>
-            <section className="card"><h2>Post a gig</h2><form onSubmit={createGig} className="form grid-form"><label>Title<input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label><label>Location<input required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></label><label>Date<input required type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} /></label><label>Start<input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></label><label>End<input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></label><label>Min budget<input type="number" min="0" value={form.budget_min} onChange={(e) => setForm({ ...form, budget_min: e.target.value })} /></label><label>Max budget<input type="number" min="0" value={form.budget_max} onChange={(e) => setForm({ ...form, budget_max: e.target.value })} /></label><label>Genres<input placeholder="Wedding, Hip-hop" value={form.genres} onChange={(e) => setForm({ ...form, genres: e.target.value })} /></label><label className="full">Description<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label><button className="primary full">Post gig</button></form></section>
-            <section><h2>Your gigs</h2><div className="gig-grid">{gigs.length ? gigs.map((gig) => <article className="card gig-card" key={gig.id}><p className="eyebrow">{gig.status}</p><h3>{gig.title}</h3><p>{gig.event_date} · {gig.location}</p></article>) : <div className="card"><p>No gigs posted yet.</p></div>}</div></section>
-            <section><h2>Applications</h2><div className="gig-grid">{applications.length ? applications.map((app) => <article className="card gig-card" key={app.id}><p className="eyebrow">{app.status}</p><h3>{app.gig?.title || "Gig"}</h3><p>{app.message || "No message."}</p>{app.proposed_rate != null && <p>Proposed rate: ${app.proposed_rate}</p>}{app.status === "pending" && <div><button className="primary" onClick={() => void decideApplication(app, "accepted")}>Accept</button> <button onClick={() => void decideApplication(app, "rejected")}>Reject</button></div>}</article>) : <div className="card"><p>No applications yet.</p></div>}</div></section>
+            <section className="card"><div className="section-heading"><div><p className="eyebrow">CLIENT</p><h2>Make a gig</h2><p>Ready to find a DJ? Create your gig and let DJs send booking requests.</p></div><Link className="button primary" href="/gigs/new">Make a gig</Link></div></section>
+            <section><h2>Your gigs</h2><div className="gig-grid">{gigs.length ? gigs.map((gig) => <article className="card gig-card" key={gig.id}><p className="eyebrow">{gig.status}</p><h3>{gig.title}</h3><p>{gig.event_date} · {gig.location}</p><Link className="button" href={`/gigs/${gig.id}`}>View gig</Link></article>) : <div className="card"><p>No gigs posted yet.</p><Link className="button primary" href="/gigs/new">Make your first gig</Link></div>}</div></section>
+            <section><h2>Booking requests</h2><div className="gig-grid">{applications.length ? applications.map((app) => <article className="card gig-card" key={app.id}><p className="eyebrow">{app.status}</p><h3>{app.gig?.title || "Gig"}</h3><p>{app.message || "No message."}</p>{app.proposed_rate != null && <p>Proposed rate: ${app.proposed_rate}</p>}{app.status === "pending" && <div><button className="primary" onClick={() => void decideApplication(app, "accepted")}>Accept</button> <button onClick={() => void decideApplication(app, "rejected")}>Decline</button></div>}</article>) : <div className="card"><p>No booking requests yet.</p></div>}</div></section>
           </>
         ) : (
-          <section><h2>Open gigs</h2><div className="gig-grid">{gigs.map((gig) => <article className="card gig-card" key={gig.id}><p className="eyebrow">{gig.event_date}</p><h3>{gig.title}</h3><p>{gig.description || "No description yet."}</p><p><strong>{gig.location}</strong></p><p>{gig.start_time || "Time TBD"}{gig.end_time ? ` – ${gig.end_time}` : ""}</p><p>{gig.budget_min != null || gig.budget_max != null ? `$${gig.budget_min ?? 0}–$${gig.budget_max ?? gig.budget_min}` : "Budget not listed"}</p><Link className="primary button" href="/discover">Find more gigs</Link></article>)}{gigs.length === 0 && <div className="card"><p>No open gigs yet.</p><Link className="button" href="/discover">Find gigs</Link></div>}</div></section>
+          <section><h2>Open gigs</h2><div className="gig-grid">{gigs.map((gig) => <article className="card gig-card" key={gig.id}><p className="eyebrow">{gig.event_date}</p><h3>{gig.title}</h3><p>{gig.description || "No description yet."}</p><p><strong>{gig.location}</strong></p><p>{gig.start_time || "Time TBD"}{gig.end_time ? ` – ${gig.end_time}` : ""}</p><p>{gig.budget_min != null || gig.budget_max != null ? `$${gig.budget_min ?? 0}–$${gig.budget_max ?? gig.budget_min}` : "Budget not listed"}</p><Link className="primary button" href={`/gigs/${gig.id}`}>Request this gig</Link></article>)}{gigs.length === 0 && <div className="card"><p>No open gigs yet.</p><Link className="button" href="/discover">Find gigs</Link></div>}</div></section>
         )}
       </section>
     </main>

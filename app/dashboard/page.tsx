@@ -22,6 +22,12 @@ export default function Dashboard() {
     const metadataRole = authUser.user_metadata?.role === "client" ? "client" : "dj";
     const metadataName = typeof authUser.user_metadata?.name === "string" && authUser.user_metadata.name.trim() ? authUser.user_metadata.name.trim() : "HOVERBOARD User";
 
+    const { data: admin } = await supabase.from("admin_accounts").select("user_id").eq("user_id", authUser.id).maybeSingle();
+    if (admin) {
+      router.replace("/admin/command-center");
+      return null;
+    }
+
     const { data: existing, error: readError } = await supabase.from("users").select("role").eq("id", authUser.id).maybeSingle();
     if (readError) throw new Error(`Profile lookup failed (${readError.code}): ${readError.message}`);
 
@@ -49,6 +55,7 @@ export default function Dashboard() {
 
     try {
       const currentRole = await ensureProfile(supabase, auth.user);
+      if (!currentRole) return;
       setRole(currentRole);
       if (currentRole === "dj") {
         const { data: profile, error: profileError } = await supabase.from("dj_profiles").select("dj_name").eq("user_id", auth.user.id).maybeSingle();

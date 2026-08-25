@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getAuthCallbackUrl } from "@/lib/auth/site-url";
 
 export default function AuthForm() {
   const router = useRouter();
@@ -27,7 +28,9 @@ export default function AuthForm() {
         if (!name.trim()) throw new Error("Please enter your name.");
         if (password.length < 6) throw new Error("Password must be at least 6 characters.");
 
-        const emailRedirectTo = `${window.location.origin}/auth/callback`;
+        // Never use window.location.origin here. A local development URL would
+        // otherwise become the destination embedded in a production confirmation email.
+        const emailRedirectTo = getAuthCallbackUrl();
         const { data, error } = await supabase.auth.signUp({
           email,
           password,

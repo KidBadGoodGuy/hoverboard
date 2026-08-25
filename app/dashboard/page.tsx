@@ -101,18 +101,19 @@ export default function Dashboard() {
 
   if (!role) return <main className="center-page"><div className="card"><p>{message || "Loading your HOVERBOARD dashboard…"}</p></div></main>;
 
+  const discoveryLabel = role === "dj" ? "Find gigs" : "Find DJs";
+
   return (
     <main className="dashboard-page">
       <header className="topbar">
         <div><span className="brand">HOVERBOARD</span><span className="muted"> · {role === "dj" ? "DJ" : "Client"} Dashboard</span></div>
-        <div className="topbar-actions">
-          <Link className="button primary" href="/discover">{role === "dj" ? "Find gigs" : "Find DJs"}</Link>
-          {role === "dj" && <Link className="button" href="/profile">Edit profile</Link>}
-          <button onClick={logout}>Log out</button>
-        </div>
+        <div className="topbar-actions"><Link className="button primary" href="/discover">{discoveryLabel}</Link>{role === "dj" && <Link className="button" href="/profile">Edit profile</Link>}<button onClick={logout}>Log out</button></div>
       </header>
       <section className="dashboard-content">
         <div className="hero-small"><p className="eyebrow">WELCOME</p><h1>Hey, {name}.</h1><p>{role === "dj" ? "Find your next gig." : "Put your next gig on the Board."}</p></div>
+        <Link href="/discover" className="card" style={{ display: "block", textDecoration: "none", cursor: "pointer", marginBottom: "24px" }}>
+          <p className="eyebrow">DISCOVERY</p><h2>{discoveryLabel}</h2><p>{role === "dj" ? "Browse and search available gigs." : "Browse and search DJs for your event."}</p><span className="button primary">Open discovery</span>
+        </Link>
         {message && <div className="notice">{message}</div>}
         {role === "client" ? (
           <>

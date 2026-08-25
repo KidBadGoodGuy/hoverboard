@@ -1,46 +1,55 @@
-"use client";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+export default async function AuthCallback({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
+  const supabase = await createClient();
+  const { code } = await searchParams;
 
-export default function AuthCallbackPage() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [message, setMessage] = useState("Confirming your email…");
+  if (!code) redirect("/auth?error=missing_confirmation_code");
 
-  useEffect(() => {
-    async function confirm() {
-      const supabase = getSupabaseBrowserClient();
-      const code = params.get("code");
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) redirect(`/auth?error=${encodeURIComponent(error.message)}`);
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          setMessage(`Email confirmation failed: ${error.message}`);
-          return;
-        }
-      }
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) redirect("/auth?error=confirmation_failed");
 
-      const { data, error } = await supabase.auth.getUser();
-      if (error || !data.user) {
-        setMessage("Your email could not be confirmed. Please request a new confirmation email.");
-        return;
-      }
+  const metadata = auth.user.user_metadata ?? {};
+  const role = metadata.role === "client" ? "client" : "dj";
+  const name = typeof metadata.name === "string" && metadata.name.trim()
+    ? metadata.name.trim()
+    : "HOVERBOARD User";
 
-      router.replace("/dashboard");
+  const { data: existing } = await supabase
+    .from("users")
+    .select("id")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
+  if (!existing) {
+    const { error: userError } = await supabase.from("users").insert({
+      id: auth.user.id,
+      email: auth.user.email ?? "",
+      role,
+    });
+
+    if (userError) redirect(`/auth?error=${encodeURIComponent(userError.message)}`);
+
+    if (role === "dj") {
+      await supabase.from("dj_profiles").insert({
+        user_id: auth.user.id,
+        dj_name: name,
+      });
+    } else {
+      await supabase.from("client_profiles").insert({
+        user_id: auth.user.id,
+        name,
+      });
     }
+  }
 
-    void confirm();
-  }, [params, router]);
-
-  return (
-    <main className="center-page">
-      <div className="card auth-card">
-        <p className="eyebrow">HOVERBOARD</p>
-        <h2>{message}</h2>
-        <p className="muted">Please wait while we finish setting up your account.</p>
-      </div>
-    </main>
-  );
+  redirect("/dashboard");
 }

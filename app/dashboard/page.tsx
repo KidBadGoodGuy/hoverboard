@@ -21,28 +21,20 @@ export default function Dashboard() {
   async function ensureProfile(supabase: ReturnType<typeof getSupabaseBrowserClient>, authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }) {
     const metadataRole = authUser.user_metadata?.role === "client" ? "client" : "dj";
     const metadataName = typeof authUser.user_metadata?.name === "string" && authUser.user_metadata.name.trim() ? authUser.user_metadata.name.trim() : "HOVERBOARD User";
-
     const { data: admin } = await supabase.from("admin_accounts").select("user_id").eq("user_id", authUser.id).maybeSingle();
-    if (admin) {
-      router.replace("/admin/command-center");
-      return null;
-    }
-
+    if (admin) { router.replace("/admin/command-center"); return null; }
     const { data: existing, error: readError } = await supabase.from("users").select("role").eq("id", authUser.id).maybeSingle();
     if (readError) throw new Error(`Profile lookup failed (${readError.code}): ${readError.message}`);
-
     const currentRole: Role = existing?.role === "client" ? "client" : "dj";
     if (!existing) {
       const { error } = await supabase.from("users").upsert({ id: authUser.id, email: authUser.email ?? "", role: metadataRole }, { onConflict: "id" });
       if (error) throw new Error(`Profile creation failed (${error.code}): ${error.message}`);
     }
-
     if (currentRole === "dj" || (!existing && metadataRole === "dj")) {
       const { error } = await supabase.from("dj_profiles").upsert({ user_id: authUser.id, dj_name: metadataName, price: 0 }, { onConflict: "user_id" });
       if (error) throw new Error(`DJ profile check failed (${error.code}): ${error.message}`);
       return (existing?.role === "client" ? "client" : metadataRole) as Role;
     }
-
     const { error } = await supabase.from("client_profiles").upsert({ user_id: authUser.id, name: metadataName }, { onConflict: "user_id" });
     if (error) throw new Error(`Client profile check failed (${error.code}): ${error.message}`);
     return "client" as Role;
@@ -52,7 +44,6 @@ export default function Dashboard() {
     const supabase = getSupabaseBrowserClient();
     const { data: auth, error: authError } = await supabase.auth.getUser();
     if (authError || !auth.user) { router.push("/auth"); return; }
-
     try {
       const currentRole = await ensureProfile(supabase, auth.user);
       if (!currentRole) return;
@@ -76,9 +67,7 @@ export default function Dashboard() {
           setApplications(((apps || []) as Application[]).map((a) => ({ ...a, gig: gigMap.get(a.gig_id) })));
         } else setApplications([]);
       }
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "We couldn't load your profile. Please try again.");
-    }
+    } catch (error) { setMessage(error instanceof Error ? error.message : "We couldn't load your profile. Please try again."); }
   }
 
   useEffect(() => { void load(); }, []);
@@ -116,35 +105,21 @@ export default function Dashboard() {
     await load();
   }
 
-  async function logout() {
-    await getSupabaseBrowserClient().auth.signOut();
-    router.push("/");
-  }
+  async function logout() { await getSupabaseBrowserClient().auth.signOut(); router.push("/"); }
 
   if (!role) return <main className="center-page"><div className="card"><p>{message || "Loading your HOVERBOARD dashboard…"}</p></div></main>;
 
   return (
     <main className="dashboard-page">
-      <header className="topbar"><div><span className="brand">HOVERBOARD</span><span className="muted"> · {role === "dj" ? "DJ" : "Client"} Dashboard</span></div><div className="topbar-actions">{role === "dj" ? <Link className="button" href="/profile">Edit profile</Link> : <Link className="button" href="/client-profile">Edit profile</Link>}<button onClick={logout}>Log out</button></div></header>
+      <header className="topbar"><div><span className="brand">HOVERBOARD</span><span className="muted"> · {role === "dj" ? "DJ" : "Client"} Dashboard</span></div><div className="topbar-actions"><Link className="button" href="/discover">{role === "dj" ? "Find gigs" : "Find DJs"}</Link>{role === "dj" && <Link className="button" href="/profile">Edit profile</Link>}<button onClick={logout}>Log out</button></div></header>
       <section className="dashboard-content">
         <div className="hero-small"><p className="eyebrow">WELCOME</p><h1>Hey, {name}.</h1><p>{role === "dj" ? "Find your next gig." : "Put your next gig on the Board."}</p></div>
         {message && <div className="notice">{message}</div>}
         {role === "client" ? <>
-          <section className="card"><h2>Post a gig</h2><form onSubmit={createGig} className="form grid-form">
-            <label>Title<input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
-            <label>Location<input required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></label>
-            <label>Date<input required type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} /></label>
-            <label>Start<input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></label>
-            <label>End<input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></label>
-            <label>Min budget<input type="number" min="0" value={form.budget_min} onChange={(e) => setForm({ ...form, budget_min: e.target.value })} /></label>
-            <label>Max budget<input type="number" min="0" value={form.budget_max} onChange={(e) => setForm({ ...form, budget_max: e.target.value })} /></label>
-            <label>Genres<input placeholder="Wedding, Hip-hop" value={form.genres} onChange={(e) => setForm({ ...form, genres: e.target.value })} /></label>
-            <label className="full">Description<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-            <button className="primary full">Post gig</button>
-          </form></section>
+          <section className="card"><h2>Post a gig</h2><form onSubmit={createGig} className="form grid-form"><label>Title<input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label><label>Location<input required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></label><label>Date<input required type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} /></label><label>Start<input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></label><label>End<input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></label><label>Min budget<input type="number" min="0" value={form.budget_min} onChange={(e) => setForm({ ...form, budget_min: e.target.value })} /></label><label>Max budget<input type="number" min="0" value={form.budget_max} onChange={(e) => setForm({ ...form, budget_max: e.target.value })} /></label><label>Genres<input placeholder="Wedding, Hip-hop" value={form.genres} onChange={(e) => setForm({ ...form, genres: e.target.value })} /></label><label className="full">Description<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label><button className="primary full">Post gig</button></form></section>
           <section><h2>Your gigs</h2><div className="gig-grid">{gigs.length ? gigs.map((gig) => <article className="card gig-card" key={gig.id}><p className="eyebrow">{gig.status}</p><h3>{gig.title}</h3><p>{gig.event_date} · {gig.location}</p></article>) : <div className="card"><p>No gigs posted yet.</p></div>}</div></section>
           <section><h2>Applications</h2><div className="gig-grid">{applications.length ? applications.map((app) => <article className="card gig-card" key={app.id}><p className="eyebrow">{app.status}</p><h3>{app.gig?.title || "Gig"}</h3><p>{app.message || "No message."}</p>{app.proposed_rate != null && <p>Proposed rate: ${app.proposed_rate}</p>}{app.status === "pending" && <div><button className="primary" onClick={() => void decideApplication(app, "accepted")}>Accept</button> <button onClick={() => void decideApplication(app, "rejected")}>Reject</button></div>}</article>) : <div className="card"><p>No applications yet.</p></div>}</div></section>
-        </> : <section><h2>Open gigs</h2><div className="gig-grid">{gigs.length ? gigs.map((gig) => <article className="card gig-card" key={gig.id}><p className="eyebrow">{gig.event_date}</p><h3>{gig.title}</h3><p>{gig.description || "No description yet."}</p><p><strong>{gig.location}</strong></p><p>{gig.start_time || "Time TBD"}{gig.end_time ? ` – ${gig.end_time}` : ""}</p><p>{gig.budget_min != null || gig.budget_max != null ? `$${gig.budget_min ?? 0}–$${gig.budget_max ?? gig.budget_min}` : "Budget not listed"}</p><button className="primary" onClick={() => void apply(gig.id)}>Apply</button></article>) : <div className="card"><p>No open gigs yet.</p></div>}</div></section>}
+        </> : <section><h2>Open gigs</h2><div className="gig-grid">{gigs.length ? gigs.map((gig) => <article className="card gig-card" key={gig.id}><p className="eyebrow">{gig.event_date}</p><h3>{gig.title}</h3><p>{gig.description || "No description yet."}</p><p><strong>{gig.location}</strong></p><p>{gig.start_time || "Time TBD"}{gig.end_time ? ` – ${gig.end_time}` : ""}</p><p>{gig.budget_min != null || gig.budget_max != null ? `$${gig.budget_min ?? 0}–$${gig.budget_max ?? gig.budget_min}` : "Budget not listed"}</p><Link className="primary button" href="/discover">Find more gigs</Link></article>) : <div className="card"><p>No open gigs yet.</p><Link className="button" href="/discover">Find gigs</Link></div>}</div></section>}
       </section>
     </main>
   );

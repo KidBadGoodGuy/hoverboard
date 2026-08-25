@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function AuthCallback({
-  searchParams,
-}: {
+type CallbackProps = {
   searchParams: Promise<{ code?: string }>;
-}) {
+};
+
+export default async function AuthCallback({ searchParams }: CallbackProps) {
   const supabase = await createClient();
   const { code } = await searchParams;
 
@@ -35,19 +35,20 @@ export default async function AuthCallback({
       email: auth.user.email ?? "",
       role,
     });
-
     if (userError) redirect(`/auth?error=${encodeURIComponent(userError.message)}`);
 
     if (role === "dj") {
-      await supabase.from("dj_profiles").insert({
+      const { error: profileError } = await supabase.from("dj_profiles").insert({
         user_id: auth.user.id,
         dj_name: name,
       });
+      if (profileError) redirect(`/auth?error=${encodeURIComponent(profileError.message)}`);
     } else {
-      await supabase.from("client_profiles").insert({
+      const { error: profileError } = await supabase.from("client_profiles").insert({
         user_id: auth.user.id,
         name,
       });
+      if (profileError) redirect(`/auth?error=${encodeURIComponent(profileError.message)}`);
     }
   }
 

@@ -43,12 +43,19 @@ export default function AuthForm() {
     try {
       const supabase = getSupabaseBrowserClient();
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { role, name } } });
+        const emailRedirectTo = `${window.location.origin}/auth/callback`;
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { role, name },
+            emailRedirectTo,
+          },
+        });
         if (error) throw error;
         if (!data.user) throw new Error("Account creation did not return a user.");
         if (!data.session) {
-          setMessage("Account created. Check your email to confirm it, then log in.");
-          setMode("login");
+          setMessage("Account created. Check your email and click the confirmation link. We’ll finish setting up your account automatically.");
         } else {
           await ensureProfile(data.user.id);
           router.push("/dashboard");

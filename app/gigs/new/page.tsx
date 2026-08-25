@@ -17,8 +17,18 @@ export default function NewGigPage() {
       const supabase = getSupabaseBrowserClient();
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) { router.push("/auth?role=client"); return; }
-      const { data: user } = await supabase.from("users").select("role").eq("id", auth.user.id).maybeSingle();
-      if (user?.role !== "client") { router.push("/dashboard"); return; }
+      const metadataRole = auth.user.user_metadata?.role === "client" ? "client" : "dj";
+      const { data: user, error: userError } = await supabase.from("users").select("role").eq("id", auth.user.id).maybeSingle();
+      if (userError) { setMessage(userError.message); return; }
+      if (!user) {
+        const { error } = await supabase.from("users").insert({ id: auth.user.id, email: auth.user.email ?? "", role: metadataRole });
+        if (error) { setMessage(error.message); return; }
+        if (metadataRole !== "client") { router.push("/dashboard"); return; }
+      } else if (user.role !== "client") {
+        if (metadataRole !== "client") { router.push("/dashboard"); return; }
+        const { error } = await supabase.from("users").update({ role: "client" }).eq("id", auth.user.id);
+        if (error) { setMessage(error.message); return; }
+      }
       setLoading(false);
     }
     void load();
@@ -32,7 +42,7 @@ export default function NewGigPage() {
     if (!auth.user) { router.push("/auth?role=client"); return; }
     const min = form.budget_min ? Number(form.budget_min) : null;
     const max = form.budget_max ? Number(form.budget_max) : null;
-    if (min !== null && (!Number.isFinite(min) || min < 0) || max !== null && (!Number.isFinite(max) || max < 0) || min !== null && max !== null && max < min) {
+    if ((min !== null && (!Number.isFinite(min) || min < 0)) || (max !== null && (!Number.isFinite(max) || max < 0)) || (min !== null && max !== null && max < min)) {
       setMessage("Please enter a valid budget range."); setSaving(false); return;
     }
     const { data, error } = await supabase.from("gigs").insert({ client_id: auth.user.id, title: form.title.trim(), description: form.description.trim() || null, event_date: form.event_date, start_time: form.start_time || null, end_time: form.end_time || null, location: form.location.trim(), budget_min: min, budget_max: max, genres: form.genres.split(",").map((x) => x.trim()).filter(Boolean), status: "open" }).select("id").single();
@@ -40,7 +50,7 @@ export default function NewGigPage() {
     router.push(`/gigs/${data.id}`);
   }
 
-  if (loading) return <main className="center-page"><div className="card"><p>Loading…</p></div></main>;
+  if (loading) return <main className="center-page"><div className="card"><p>{message || "Loading…"}</p></div></main>;
 
   return <main className="dashboard-page">
     <header className="topbar"><Link href="/dashboard" className="brand">HOVERBOARD</Link><Link href="/dashboard" className="button">Back to dashboard</Link></header>

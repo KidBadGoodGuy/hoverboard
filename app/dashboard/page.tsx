@@ -125,7 +125,7 @@ export default function Dashboard() {
 
   return (
     <main className="dashboard-page">
-      <header className="topbar"><div><span className="brand">HOVERBOARD</span><span className="muted"> · {role === "dj" ? "DJ" : "Client"} Dashboard</span></div><div className="topbar-actions">{role === "dj" && <Link className="button" href="/profile">Edit profile</Link>}<button onClick={logout}>Log out</button></div></header>
+      <header className="topbar"><div><span className="brand">HOVERBOARD</span><span className="muted"> · {role === "dj" ? "DJ" : "Client"} Dashboard</span></div><div className="topbar-actions">{role === "dj" ? <Link className="button" href="/profile">Edit profile</Link> : <Link className="button" href="/client-profile">Edit profile</Link>}<button onClick={logout}>Log out</button></div></header>
       <section className="dashboard-content">
         <div className="hero-small"><p className="eyebrow">WELCOME</p><h1>Hey, {name}.</h1><p>{role === "dj" ? "Find your next gig." : "Put your next gig on the Board."}</p></div>
         {message && <div className="notice">{message}</div>}

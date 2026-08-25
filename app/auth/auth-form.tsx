@@ -17,12 +17,19 @@ export default function AuthForm() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState(() => searchParams.get("error") || "");
   const [loading, setLoading] = useState(false);
+  const adminLogin = searchParams.get("admin") === "1";
 
   useEffect(() => {
     const requestedRole = searchParams.get("role");
     if (requestedRole === "client" || requestedRole === "dj") setRole(requestedRole);
     if (searchParams.get("signup") === "1") setMode("signup");
   }, [searchParams]);
+
+  async function redirectAfterLogin(supabase: ReturnType<typeof getSupabaseBrowserClient>, userId: string) {
+    const { data: admin } = await supabase.from("admin_accounts").select("user_id").eq("user_id", userId).maybeSingle();
+    router.replace(admin ? "/admin/command-center" : "/dashboard");
+    router.refresh();
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,16 +63,14 @@ export default function AuthForm() {
           return;
         }
 
-        router.replace("/dashboard");
-        router.refresh();
+        await redirectAfterLogin(supabase, data.user.id);
         return;
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
       if (error) throw error;
       if (!data.user || !data.session) throw new Error("We couldn't start your session. Please try again.");
-      router.replace("/dashboard");
-      router.refresh();
+      await redirectAfterLogin(supabase, data.user.id);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Something went wrong. Please try again.");
     } finally {
@@ -77,12 +82,12 @@ export default function AuthForm() {
     <div className="auth-shell">
       <div className="auth-card card">
         <div className="auth-brand"><span className="brand-mark">H</span><span>HOVERBOARD</span></div>
-        <p className="eyebrow">{mode === "signup" ? "JOIN THE BOARD" : "WELCOME BACK"}</p>
-        <h1 className="auth-title">{mode === "signup" ? "Create your account." : "Get back to your gigs."}</h1>
-        <p className="auth-copy">{mode === "signup" ? "One account. Your gigs, profiles, and bookings in one place." : "Sign in to keep your DJ gigs and bookings moving."}</p>
+        <p className="eyebrow">{adminLogin ? "ADMIN ACCESS" : mode === "signup" ? "JOIN THE BOARD" : "WELCOME BACK"}</p>
+        <h1 className="auth-title">{adminLogin ? "Admin sign in." : mode === "signup" ? "Create your account." : "Get back to your gigs."}</h1>
+        <p className="auth-copy">{adminLogin ? "Sign in with your authorized HOVERBOARD administrator account." : mode === "signup" ? "One account. Your gigs, profiles, and bookings in one place." : "Sign in to keep your DJ gigs and bookings moving."}</p>
 
         <form onSubmit={submit} className="form">
-          {mode === "signup" && (
+          {mode === "signup" && !adminLogin && (
             <>
               <label>Name<input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required /></label>
               <div><span className="field-label">I’m joining as</span><div className="role-switch" role="group" aria-label="Account type">
@@ -98,9 +103,11 @@ export default function AuthForm() {
         </form>
 
         {message && <div className="notice" role="alert">{message}</div>}
-        <button className="link-button" type="button" onClick={() => { setMode(mode === "login" ? "signup" : "login"); setMessage(""); }}>
+        {!adminLogin && <button className="link-button" type="button" onClick={() => { setMode(mode === "login" ? "signup" : "login"); setMessage(""); }}>
           {mode === "login" ? "New to HOVERBOARD? Create an account" : "Already have an account? Log in"}
-        </button>
+        </button>}
+        {!adminLogin && mode === "login" && <a className="admin-login-link" href="/auth?admin=1">Login as admin</a>}
+        {adminLogin && <a className="admin-login-link" href="/auth">Back to normal login</a>}
       </div>
     </div>
   );

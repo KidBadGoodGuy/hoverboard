@@ -18,31 +18,59 @@ export default function Dashboard() {
   const [message, setMessage] = useState("");
   const [form, setForm] = useState({ title: "", description: "", event_date: "", start_time: "", end_time: "", location: "", budget_min: "", budget_max: "", genres: "" });
 
+  async function ensureProfile(supabase: ReturnType<typeof getSupabaseBrowserClient>, authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }) {
+    const metadataRole = authUser.user_metadata?.role === "client" ? "client" : "dj";
+    const metadataName = typeof authUser.user_metadata?.name === "string" && authUser.user_metadata.name.trim() ? authUser.user_metadata.name.trim() : "HOVERBOARD User";
+
+    const { data: existing, error: readError } = await supabase.from("users").select("role").eq("id", authUser.id).maybeSingle();
+    if (readError) throw new Error(`Profile lookup failed (${readError.code}): ${readError.message}`);
+
+    const currentRole: Role = existing?.role === "client" ? "client" : "dj";
+    if (!existing) {
+      const { error } = await supabase.from("users").upsert({ id: authUser.id, email: authUser.email ?? "", role: metadataRole }, { onConflict: "id" });
+      if (error) throw new Error(`Profile creation failed (${error.code}): ${error.message}`);
+    }
+
+    if (currentRole === "dj" || (!existing && metadataRole === "dj")) {
+      const { error } = await supabase.from("dj_profiles").upsert({ user_id: authUser.id, dj_name: metadataName, price: 0 }, { onConflict: "user_id" });
+      if (error) throw new Error(`DJ profile check failed (${error.code}): ${error.message}`);
+      return (existing?.role === "client" ? "client" : metadataRole) as Role;
+    }
+
+    const { error } = await supabase.from("client_profiles").upsert({ user_id: authUser.id, name: metadataName }, { onConflict: "user_id" });
+    if (error) throw new Error(`Client profile check failed (${error.code}): ${error.message}`);
+    return "client" as Role;
+  }
+
   async function load() {
     const supabase = getSupabaseBrowserClient();
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) { router.push("/auth"); return; }
-    const { data: user, error: userError } = await supabase.from("users").select("role").eq("id", auth.user.id).single();
-    if (userError || !user) { setMessage("Your account profile is incomplete. Please log out and sign up again."); return; }
-    const currentRole = user.role as Role;
-    setRole(currentRole);
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError || !auth.user) { router.push("/auth"); return; }
 
-    if (currentRole === "dj") {
-      const { data: profile } = await supabase.from("dj_profiles").select("dj_name").eq("user_id", auth.user.id).single();
-      setName(profile?.dj_name || "DJ");
-      const { data: open } = await supabase.from("gigs").select("*").eq("status", "open").order("event_date");
-      setGigs((open as Gig[]) || []);
-    } else {
-      const { data: profile } = await supabase.from("client_profiles").select("name").eq("user_id", auth.user.id).single();
-      setName(profile?.name || "Client");
-      const { data: own } = await supabase.from("gigs").select("*").eq("client_id", auth.user.id).order("event_date");
-      const ownGigs = (own as Gig[]) || [];
-      setGigs(ownGigs);
-      if (ownGigs.length) {
-        const { data: apps } = await supabase.from("gig_applications").select("*").in("gig_id", ownGigs.map((g) => g.id)).order("created_at", { ascending: false });
-        const gigMap = new Map(ownGigs.map((g) => [g.id, g]));
-        setApplications(((apps || []) as Application[]).map((a) => ({ ...a, gig: gigMap.get(a.gig_id) })));
-      } else setApplications([]);
+    try {
+      const currentRole = await ensureProfile(supabase, auth.user);
+      setRole(currentRole);
+      if (currentRole === "dj") {
+        const { data: profile, error: profileError } = await supabase.from("dj_profiles").select("dj_name").eq("user_id", auth.user.id).maybeSingle();
+        if (profileError) throw new Error(`DJ profile lookup failed (${profileError.code}): ${profileError.message}`);
+        setName(profile?.dj_name || "DJ");
+        const { data: open } = await supabase.from("gigs").select("*").eq("status", "open").order("event_date");
+        setGigs((open as Gig[]) || []);
+      } else {
+        const { data: profile, error: profileError } = await supabase.from("client_profiles").select("name").eq("user_id", auth.user.id).maybeSingle();
+        if (profileError) throw new Error(`Client profile lookup failed (${profileError.code}): ${profileError.message}`);
+        setName(profile?.name || "Client");
+        const { data: own } = await supabase.from("gigs").select("*").eq("client_id", auth.user.id).order("event_date");
+        const ownGigs = (own as Gig[]) || [];
+        setGigs(ownGigs);
+        if (ownGigs.length) {
+          const { data: apps } = await supabase.from("gig_applications").select("*").in("gig_id", ownGigs.map((g) => g.id)).order("created_at", { ascending: false });
+          const gigMap = new Map(ownGigs.map((g) => [g.id, g]));
+          setApplications(((apps || []) as Application[]).map((a) => ({ ...a, gig: gigMap.get(a.gig_id) })));
+        } else setApplications([]);
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "We couldn't load your profile. Please try again.");
     }
   }
 

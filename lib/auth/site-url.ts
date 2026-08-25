@@ -1,18 +1,16 @@
 const PRODUCTION_SITE_URL = "https://hoverboard.arjun-singh.com";
 
 /**
- * The canonical public URL used for Supabase Auth redirects.
+ * HOVERBOARD's canonical public authentication URL.
  *
- * We deliberately fall back to the production URL instead of window.location.origin
- * so an accidental localhost deployment/test can never bake localhost into a
- * confirmation email for a production account.
+ * Auth redirects must never inherit a build-time or local-development
+ * environment variable. Supabase confirmation emails are production-facing,
+ * so this value is intentionally immutable in the client application.
  */
 export function getAuthSiteUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
-  if (configured) return configured;
   return PRODUCTION_SITE_URL;
 }
 
 export function getAuthCallbackUrl(): string {
-  return `${getAuthSiteUrl()}/auth/callback`;
+  return `${PRODUCTION_SITE_URL}/auth/callback`;
 }

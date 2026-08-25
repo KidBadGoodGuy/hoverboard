@@ -7,14 +7,14 @@ import { getSupabaseBrowserClient } from "../../../lib/supabase/client";
 
 type Mode = "dj" | "client";
 
-type Profile = {
-  dj_name?: string | null;
-  bio?: string | null;
-  location?: string | null;
-  price?: number | null;
-  name?: string | null;
-  profile_information?: string | null;
-};
+type Profile = { dj_name?: string | null; bio?: string | null; location?: string | null; price?: number | null; name?: string | null; profile_information?: string | null };
+
+const EDITING_LINKS = [
+  { name: "GitHub", description: "Edit HOVERBOARD code and view commits.", href: "https://github.com/KidBadGoodGuy/hoverboard" },
+  { name: "Supabase", description: "Manage Auth, database, storage, and backend services.", href: "https://supabase.com/dashboard/project/elzspffydufijvjypbvn" },
+  { name: "Resend", description: "Inspect email sends, delivery, and configuration.", href: "https://resend.com/emails" },
+  { name: "Cloudflare", description: "Manage the production domain, DNS, and web infrastructure.", href: "https://dash.cloudflare.com/" },
+];
 
 export default function AdminCommandCenter() {
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function AdminCommandCenter() {
     async function load() {
       const supabase = getSupabaseBrowserClient();
       const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) { router.push("/auth"); return; }
+      if (!auth.user) { router.push("/auth?admin=1"); return; }
       const { data: admin } = await supabase.from("admin_accounts").select("user_id").eq("user_id", auth.user.id).maybeSingle();
       if (!admin) { router.push("/dashboard"); return; }
       const [{ data: dj }, { data: client }] = await Promise.all([
@@ -42,10 +42,7 @@ export default function AdminCommandCenter() {
     void load();
   }, [mode, router]);
 
-  async function logout() {
-    await getSupabaseBrowserClient().auth.signOut();
-    router.push("/");
-  }
+  async function logout() { await getSupabaseBrowserClient().auth.signOut(); router.push("/"); }
 
   if (loading) return <main className="center-page"><div className="card"><p>Opening the HOVERBOARD Admin Command Center…</p></div></main>;
   if (!authorized) return null;
@@ -56,10 +53,8 @@ export default function AdminCommandCenter() {
       <section className="dashboard-content">
         <div className="hero-small"><p className="eyebrow">ADMIN ACCESS</p><h1>Welcome, {name}.</h1><p>One administrator account with both DJ and Client capabilities.</p></div>
         <section className="card"><p className="eyebrow">ACCOUNT MODE</p><h2>Choose your HOVERBOARD role</h2><div className="role-switch"><button className={mode === "dj" ? "active" : ""} onClick={() => setMode("dj")}>DJ Mode</button><button className={mode === "client" ? "active" : ""} onClick={() => setMode("client")}>Client Mode</button></div><div className="notice">{mode === "dj" ? "You are viewing your Solo DJ side." : "You are viewing your Client side."}</div></section>
-        <section className="gig-grid">
-          <article className="card gig-card"><p className="eyebrow">DJ</p><h3>Solo DJ Profile</h3><p>Manage your DJ identity, pricing, genres, availability, and profile photo.</p><Link className="primary button" href="/profile">Open DJ profile</Link></article>
-          <article className="card gig-card"><p className="eyebrow">CLIENT</p><h3>Client Experience</h3><p>Post gigs and test the client workflow using the same protected admin account.</p><Link className="primary button" href="/admin/client">Open Client Mode</Link></article>
-        </section>
+        <section className="gig-grid"><article className="card gig-card"><p className="eyebrow">DJ</p><h3>Solo DJ Profile</h3><p>Manage your DJ identity, pricing, genres, availability, and profile photo.</p><Link className="primary button" href="/profile">Open DJ profile</Link></article><article className="card gig-card"><p className="eyebrow">CLIENT</p><h3>Client Experience</h3><p>Post gigs and test the client workflow using the same protected admin account.</p><Link className="primary button" href="/admin/client">Open Client Mode</Link></article></section>
+        <section className="card"><p className="eyebrow">DEVELOPER TOOLS</p><h2>HOVERBOARD editing links</h2><p>Quick access to the services used to build and operate HOVERBOARD.</p><div className="gig-grid">{EDITING_LINKS.map((link) => <a key={link.name} className="card gig-card" href={link.href} target="_blank" rel="noreferrer"><p className="eyebrow">OPEN</p><h3>{link.name} ↗</h3><p>{link.description}</p></a>)}</div></section>
         <section className="card"><p className="eyebrow">ADMIN</p><h2>Private control room</h2><p>This page is intentionally not linked from public navigation. Access requires an authenticated HOVERBOARD admin account.</p></section>
       </section>
     </main>

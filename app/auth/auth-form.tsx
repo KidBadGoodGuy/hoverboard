@@ -4,60 +4,69 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
+const PRODUCTION_CALLBACK = "https://hoverboard.arjun-singh.com/auth/callback";
+
+type Role = "dj" | "client";
+
 export default function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [role, setRole] = useState<"dj" | "client">("dj");
+  const [role, setRole] = useState<Role>("dj");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState(() => searchParams.get("error") || "");
   const [loading, setLoading] = useState(false);
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (loading) return;
     setLoading(true);
     setMessage("");
 
     try {
       const supabase = getSupabaseBrowserClient();
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanName = name.trim();
 
       if (mode === "signup") {
-        if (!name.trim()) throw new Error("Please enter your name.");
-        if (password.length < 6) throw new Error("Password must be at least 6 characters.");
+        if (!cleanName) throw new Error("Please enter your name.");
+        if (password.length < 8) throw new Error("Password must be at least 8 characters.");
 
-        // HOVERBOARD V1 does not require email confirmation. Supabase should
-        // return a session immediately when Confirm Email is disabled.
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: cleanEmail,
           password,
           options: {
-            data: { role, name: name.trim() },
+            data: { role, name: cleanName },
+            emailRedirectTo: PRODUCTION_CALLBACK,
           },
         });
 
         if (error) throw error;
-        if (!data.user) throw new Error("Account creation did not return a user.");
+        if (!data.user) throw new Error("We couldn't create your account. Please try again.");
 
-        // With Supabase email confirmation disabled, signup returns a session.
-        // Keep a defensive fallback so the UI never tells users to check email.
+        // Confirm email is intentionally enabled. A confirmed session is created
+        // by the callback route, which also guarantees the HOVERBOARD profile.
         if (!data.session) {
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (loginError) throw loginError;
-          if (!loginData.session) throw new Error("Account was created, but the session could not be started. Please try logging in.");
+          setMessage("Account created! Check your email for the HOVERBOARD confirmation link.");
+          return;
         }
 
-        router.push("/dashboard");
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        if (!data.user) throw new Error("Login did not return a user.");
-        router.push("/dashboard");
+        router.replace("/dashboard");
+        router.refresh();
+        return;
       }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+      if (error) throw error;
+      if (!data.user || !data.session) throw new Error("We couldn't start your session. Please try again.");
+
+      router.replace("/dashboard");
+      router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Something went wrong. Please try again.");
     } finally {
@@ -66,25 +75,37 @@ export default function AuthForm() {
   }
 
   return (
-    <form onSubmit={submit} className="auth-form">
-      {mode === "signup" && (
-        <>
-          <label>Name<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
-          <label>Account type
-            <select value={role} onChange={(e) => setRole(e.target.value as "dj" | "client")}>
-              <option value="dj">Solo DJ</option>
-              <option value="client">Client</option>
-            </select>
-          </label>
-        </>
-      )}
-      <label>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
-      <label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></label>
-      <button type="submit" disabled={loading}>{loading ? "Please wait…" : mode === "signup" ? "Create account" : "Log in"}</button>
-      <button type="button" onClick={() => { setMode(mode === "login" ? "signup" : "login"); setMessage(""); }}>
-        {mode === "login" ? "Create an account" : "Already have an account? Log in"}
-      </button>
-      {message && <p role="alert">{message}</p>}
-    </form>
+    <div className="auth-shell">
+      <div className="auth-card card">
+        <div className="auth-brand"><span className="brand-mark">H</span><span>HOVERBOARD</span></div>
+        <p className="eyebrow">{mode === "signup" ? "JOIN THE BOARD" : "WELCOME BACK"}</p>
+        <h1 className="auth-title">{mode === "signup" ? "Create your account." : "Get back to your gigs."}</h1>
+        <p className="auth-copy">{mode === "signup" ? "One account. Your gigs, profiles, and bookings in one place." : "Sign in to keep your DJ gigs and bookings moving."}</p>
+
+        <form onSubmit={submit} className="form">
+          {mode === "signup" && (
+            <>
+              <label>Name<input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required /></label>
+              <div>
+                <span className="field-label">I’m joining as</span>
+                <div className="role-switch" role="group" aria-label="Account type">
+                  <button type="button" className={role === "dj" ? "active" : ""} onClick={() => setRole("dj")}>Solo DJ</button>
+                  <button type="button" className={role === "client" ? "active" : ""} onClick={() => setRole("client")}>Client</button>
+                </div>
+              </div>
+            </>
+          )}
+          <label>Email<input autoComplete="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+          <label>Password<input autoComplete={mode === "signup" ? "new-password" : "current-password"} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} /></label>
+          {mode === "signup" && <p className="field-help">You’ll receive a confirmation email before your account is activated.</p>}
+          <button className="primary auth-submit" type="submit" disabled={loading}>{loading ? "Working…" : mode === "signup" ? "Create account" : "Log in"}</button>
+        </form>
+
+        {message && <div className="notice" role="alert">{message}</div>}
+        <button className="link-button" type="button" onClick={() => { setMode(mode === "login" ? "signup" : "login"); setMessage(""); }}>
+          {mode === "login" ? "New to HOVERBOARD? Create an account" : "Already have an account? Log in"}
+        </button>
+      </div>
+    </div>
   );
 }

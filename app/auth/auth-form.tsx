@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getAuthCallbackUrl } from "@/lib/auth/site-url";
 
 export default function AuthForm() {
   const router = useRouter();
@@ -28,26 +27,31 @@ export default function AuthForm() {
         if (!name.trim()) throw new Error("Please enter your name.");
         if (password.length < 6) throw new Error("Password must be at least 6 characters.");
 
-        // Never use window.location.origin here. A local development URL would
-        // otherwise become the destination embedded in a production confirmation email.
-        const emailRedirectTo = getAuthCallbackUrl();
+        // HOVERBOARD V1 does not require email confirmation. Supabase should
+        // return a session immediately when Confirm Email is disabled.
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { role, name: name.trim() },
-            emailRedirectTo,
           },
         });
 
         if (error) throw error;
         if (!data.user) throw new Error("Account creation did not return a user.");
 
-        if (data.session) {
-          router.push("/dashboard");
-        } else {
-          setMessage("Account created. Check your email and click the confirmation link to finish setup.");
+        // With Supabase email confirmation disabled, signup returns a session.
+        // Keep a defensive fallback so the UI never tells users to check email.
+        if (!data.session) {
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (loginError) throw loginError;
+          if (!loginData.session) throw new Error("Account was created, but the session could not be started. Please try logging in.");
         }
+
+        router.push("/dashboard");
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

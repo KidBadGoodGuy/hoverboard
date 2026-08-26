@@ -55,11 +55,20 @@ export default function AuthForm() {
           },
         });
 
-        if (error) throw error;
+        if (error) {
+          // Never silently treat an existing account as a newly created one.
+          if (/already registered|already exists|user already registered/i.test(error.message)) {
+            throw new Error("An account with this email already exists. Please log in instead.");
+          }
+          throw error;
+        }
         if (!data.user) throw new Error("We couldn't create your account. Please try again.");
 
+        // A newly created account must go through email confirmation before access is granted.
+        // Supabase may return an existing user without an error when email enumeration protection
+        // is enabled, so only the presence of a session is treated as an already-confirmed account.
         if (!data.session) {
-          setMessage("Account created! Check your email for the HOVERBOARD confirmation link.");
+          setMessage("Account created! We sent a new confirmation email. Check your inbox before logging in.");
           return;
         }
 

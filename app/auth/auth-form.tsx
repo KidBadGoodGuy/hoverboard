@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -10,6 +10,7 @@ type Role = "dj" | "client";
 export default function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const noticeRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [role, setRole] = useState<Role>("dj");
   const [name, setName] = useState("");
@@ -24,6 +25,14 @@ export default function AuthForm() {
     if (requestedRole === "client" || requestedRole === "dj") setRole(requestedRole);
     if (searchParams.get("signup") === "1") setMode("signup");
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!message || !noticeRef.current) return;
+    const timer = window.setTimeout(() => {
+      noticeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
   async function redirectAfterLogin(supabase: ReturnType<typeof getSupabaseBrowserClient>, userId: string) {
     const { data: admin } = await supabase.from("admin_accounts").select("user_id").eq("user_id", userId).maybeSingle();
@@ -56,7 +65,6 @@ export default function AuthForm() {
         });
 
         if (error) {
-          // Never silently treat an existing account as a newly created one.
           if (/already registered|already exists|user already registered/i.test(error.message)) {
             throw new Error("An account with this email already exists. Please log in instead.");
           }
@@ -64,9 +72,6 @@ export default function AuthForm() {
         }
         if (!data.user) throw new Error("We couldn't create your account. Please try again.");
 
-        // A newly created account must go through email confirmation before access is granted.
-        // Supabase may return an existing user without an error when email enumeration protection
-        // is enabled, so only the presence of a session is treated as an already-confirmed account.
         if (!data.session) {
           setMessage("Account created! We sent a new confirmation email. Check your inbox before logging in.");
           return;
@@ -111,7 +116,7 @@ export default function AuthForm() {
           <button className="primary auth-submit" type="submit" disabled={loading}>{loading ? "Working…" : mode === "signup" ? "Create account" : "Log in"}</button>
         </form>
 
-        {message && <div className="notice" role="alert">{message}</div>}
+        {message && <div ref={noticeRef} id="confirmation-notice" className="notice confirmation-notice" role="alert">{message}</div>}
         {!adminLogin && <button className="link-button" type="button" onClick={() => { setMode(mode === "login" ? "signup" : "login"); setMessage(""); }}>
           {mode === "login" ? "New to HOVERBOARD? Create an account" : "Already have an account? Log in"}
         </button>}

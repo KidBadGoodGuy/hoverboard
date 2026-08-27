@@ -1,23 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "../../lib/supabase/client";
 
 type Role = "dj" | "client";
 type Gig = { id: string; title: string; description: string | null; event_date: string; start_time: string | null; end_time: string | null; location: string; budget_min: number | null; budget_max: number | null; genres: string[]; status: string };
 type Application = { id: string; gig_id: string; dj_id: string; message: string | null; proposed_rate: number | null; status: string; gig?: Gig };
-type Booking = { id: string; dj_id: string; client_id: string; event_date: string; start_time: string; end_time: string; location: string; price: number; status: string };
+type Booking = { id: string; dj_id: string; client_id: string; event_date: string; start_time: string; end_time: string; location: string; price: number; status: string; payment_status?: string };
 
 export default function Dashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [role, setRole] = useState<Role | null>(null);
   const [name, setName] = useState("");
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [message, setMessage] = useState("");
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   async function ensureProfile(supabase: ReturnType<typeof getSupabaseBrowserClient>, authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }) {
     const metadataRole = authUser.user_metadata?.role === "client" ? "client" : "dj";
@@ -49,7 +51,8 @@ export default function Dashboard() {
       const currentRole = await ensureProfile(supabase, auth.user);
       if (!currentRole) return;
       setRole(currentRole);
-      const { data: upcoming } = await supabase.from("bookings").select("*").eq(currentRole === "dj" ? "dj_id" : "client_id", auth.user.id).in("status", ["accepted", "paid", "confirmed"]).order("event_date", { ascending: true });
+      const { data: upcoming, error: bookingError } = await supabase.from("bookings").select("*").eq(currentRole === "dj" ? "dj_id" : "client_id", auth.user.id).in("status", ["accepted", "paid", "confirmed"]).order("event_date", { ascending: true });
+      if (bookingError) throw new Error(`Bookings could not load: ${bookingError.message}`);
       setBookings((upcoming as Booking[]) || []);
       if (currentRole === "dj") {
         const { data: profile, error: profileError } = await supabase.from("dj_profiles").select("dj_name").eq("user_id", auth.user.id).maybeSingle();
@@ -74,6 +77,27 @@ export default function Dashboard() {
   }
 
   useEffect(() => { void load(); }, []);
+
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    if (payment === "success") setMessage("Payment submitted. Your booking will switch to Confirmed after Stripe verifies the payment.");
+    if (payment === "cancelled") setMessage("Payment was cancelled. Your booking is still waiting for payment.");
+  }, [searchParams]);
+
+  async function payForBooking(bookingId: string) {
+    if (payingId) return;
+    setPayingId(bookingId);
+    setMessage("");
+    try {
+      const response = await fetch("/api/payments/create-checkout-session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bookingId }) });
+      const result = await response.json();
+      if (!response.ok || !result.url) throw new Error(result.error || "We couldn't start checkout.");
+      window.location.assign(result.url);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "We couldn't start payment.");
+      setPayingId(null);
+    }
+  }
 
   async function decideApplication(application: Application, decision: "accepted" | "rejected") {
     const supabase = getSupabaseBrowserClient();
@@ -120,10 +144,12 @@ export default function Dashboard() {
         {message && <div className="notice">{message}</div>}
 
         <section>
-          <div className="section-heading"><div><p className="eyebrow">BOOKINGS</p><h2>Upcoming bookings</h2><p className="muted">Accepted bookings are locked in and ready for the payment step.</p></div></div>
+          <div className="section-heading"><div><p className="eyebrow">BOOKINGS</p><h2>Upcoming bookings</h2><p className="muted">Accepted bookings are ready for payment. Confirmed bookings have been paid.</p></div></div>
           <div className="gig-grid">{bookings.length ? bookings.map((booking) => <article className="card gig-card booking-card" key={booking.id}>
             <span className={`status-pill ${booking.status === "confirmed" || booking.status === "paid" ? "blue" : ""}`}>{booking.status === "accepted" ? "Payment ready" : booking.status}</span>
             <h3>{booking.event_date}</h3><p>{booking.start_time} – {booking.end_time}</p><p><strong>{booking.location}</strong></p><p>Booking total: ${Number(booking.price).toFixed(2)}</p>
+            {role === "client" && booking.status === "accepted" && <button className="primary" disabled={payingId === booking.id} onClick={() => void payForBooking(booking.id)}>{payingId === booking.id ? "Opening checkout…" : "Pay securely"}</button>}
+            {booking.status === "confirmed" && <span className="status-pill blue">Payment complete</span>}
           </article>) : <div className="card"><p>No upcoming bookings yet.</p></div>}</div>
         </section>
 

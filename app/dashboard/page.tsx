@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "../../lib/supabase/client";
 
@@ -12,7 +12,6 @@ type Booking = { id: string; dj_id: string; client_id: string; event_date: strin
 
 export default function Dashboard() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [role, setRole] = useState<Role | null>(null);
   const [name, setName] = useState("");
   const [gigs, setGigs] = useState<Gig[]>([]);
@@ -79,10 +78,10 @@ export default function Dashboard() {
   useEffect(() => { void load(); }, []);
 
   useEffect(() => {
-    const payment = searchParams.get("payment");
+    const payment = new URLSearchParams(window.location.search).get("payment");
     if (payment === "success") setMessage("Payment submitted. Your booking will switch to Confirmed after Stripe verifies the payment.");
     if (payment === "cancelled") setMessage("Payment was cancelled. Your booking is still waiting for payment.");
-  }, [searchParams]);
+  }, []);
 
   async function payForBooking(bookingId: string) {
     if (payingId) return;

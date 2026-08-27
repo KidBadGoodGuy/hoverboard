@@ -1,19 +1,49 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const gigPrice = 500;
-const platformFee = gigPrice * 0.1;
-const total = gigPrice + platformFee;
+const DEMO_PRICE = 500;
+const PLATFORM_RATE = 0.1;
 
 export default function PaymentPage() {
-  const [processing, setProcessing] = useState(false);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState("");
 
-  function continueToPayment() {
-    setProcessing(true);
-    // Stripe Checkout will be connected here once the Live payment endpoint is ready.
-    window.setTimeout(() => setProcessing(false), 900);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("booking_id");
+    setBookingId(id);
+  }, []);
+
+  const platformFee = DEMO_PRICE * PLATFORM_RATE;
+  const total = DEMO_PRICE + platformFee;
+
+  async function startCheckout() {
+    if (!bookingId) {
+      setError("Open payment from an accepted booking so HOVERBOARD knows which booking to charge.");
+      return;
+    }
+
+    if (starting) return;
+    setStarting(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/payments/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId }),
+      });
+      const result = await response.json();
+      if (!response.ok || typeof result.url !== "string") {
+        throw new Error(result.error || "We couldn't start secure checkout.");
+      }
+      window.location.assign(result.url);
+    } catch (checkoutError) {
+      setError(checkoutError instanceof Error ? checkoutError.message : "We couldn't start secure checkout.");
+      setStarting(false);
+    }
   }
 
   return (
@@ -22,69 +52,45 @@ export default function PaymentPage() {
         <div className="payment-heading">
           <span className="eyebrow">SECURE CHECKOUT</span>
           <h1>Pay for your gig</h1>
-          <p className="subtitle">Review the booking before continuing to secure payment.</p>
+          <p className="subtitle">Review the booking total before continuing to secure payment.</p>
         </div>
 
         <section className="payment-grid">
           <div className="card payment-card">
-            <div className="payment-card-header">
-              <div>
-                <span className="status-pill blue">Gig booking</span>
-                <h2>Birthday Party</h2>
-                <p className="muted">DJ Nova · September 12, 2026</p>
-              </div>
-            </div>
+            <span className="status-pill blue">Gig booking</span>
+            <h2>DJ Gig</h2>
+            <p className="muted">Your accepted HOVERBOARD booking</p>
 
             <div className="payment-details">
-              <div className="payment-row">
-                <span>DJ price</span>
-                <strong>${gigPrice.toFixed(2)}</strong>
-              </div>
-              <div className="payment-row">
-                <span>HOVERBOARD fee <small>(10%)</small></span>
-                <strong>${platformFee.toFixed(2)}</strong>
-              </div>
-              <div className="payment-total">
-                <span>Total</span>
-                <strong>${total.toFixed(2)}</strong>
-              </div>
+              <div className="payment-row"><span>DJ price</span><strong>${DEMO_PRICE.toFixed(2)}</strong></div>
+              <div className="payment-row"><span>HOVERBOARD fee <small>(10%)</small></span><strong>${platformFee.toFixed(2)}</strong></div>
+              <div className="payment-total"><span>Total</span><strong>${total.toFixed(2)}</strong></div>
             </div>
 
             <div className="payment-note">
               <span className="payment-note-icon">✓</span>
-              <div>
-                <strong>Transparent pricing</strong>
-                <p>The DJ keeps their listed price. HOVERBOARD&apos;s 10% client fee is shown before you pay.</p>
-              </div>
+              <div><strong>Transparent pricing</strong><p>The DJ keeps their listed price. HOVERBOARD's client fee is shown before payment.</p></div>
             </div>
           </div>
 
           <div className="card payment-action-card">
             <div className="secure-badge">
-              <span>🔒</span>
-              <div>
-                <strong>Secure payment</strong>
-                <p>Payment details are handled securely by Stripe.</p>
-              </div>
+              <span>Secure</span>
+              <div><strong>Stripe checkout</strong><p>Your payment details are entered on Stripe's secure checkout page.</p></div>
             </div>
 
             <div className="payment-method-preview">
-              <span className="payment-method-label">Payment method</span>
-              <div className="payment-method-placeholder">
-                <span>Card, wallet, or other available method</span>
-                <span className="payment-dots">••••</span>
-              </div>
+              <span className="payment-method-label">Payment</span>
+              <div className="payment-method-placeholder"><span>Secure checkout</span><span className="payment-dots">••••</span></div>
             </div>
 
-            <button className="primary payment-button" onClick={continueToPayment} disabled={processing}>
-              {processing ? "Opening secure checkout…" : `Continue · $${total.toFixed(2)}`}
+            {error && <div className="notice">{error}</div>}
+
+            <button className="primary payment-button" onClick={() => void startCheckout()} disabled={starting}>
+              {starting ? "Opening secure checkout…" : `Pay $${total.toFixed(2)}`}
             </button>
-
-            <p className="payment-disclaimer">
-              You&apos;ll be sent to Stripe&apos;s secure checkout to enter your payment details. HOVERBOARD does not store your card information.
-            </p>
-
-            <Link href="/discover" className="link-button payment-back">← Back to gigs</Link>
+            <p className="payment-disclaimer">HOVERBOARD does not store your card information.</p>
+            <Link href="/dashboard" className="link-button payment-back">← Back to dashboard</Link>
           </div>
         </section>
       </div>

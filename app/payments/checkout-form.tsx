@@ -76,7 +76,7 @@ export default function CheckoutForm({ bookingId, onMessage }: Props) {
 
       const loadActionsResult = await checkout.loadActions();
       if (cancelled) return;
-      if (loadActionsResult.type !== "success") {
+      if (!("actions" in loadActionsResult)) {
         setStatus("The secure payment form could not finish loading. Please try again.");
         return;
       }

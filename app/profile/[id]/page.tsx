@@ -25,11 +25,17 @@ export default function PublicDJProfile() {
       const supabase = getSupabaseBrowserClient();
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) { router.push("/auth"); return; }
-      const { data: user } = await supabase.from("users").select("role").eq("id", auth.user.id).maybeSingle();
-      if (user?.role !== "client") { setNotice("Only clients can request a DJ for a gig."); setLoading(false); return; }
+
+      const [{ data: user }, { data: admin }] = await Promise.all([
+        supabase.from("users").select("role").eq("id", auth.user.id).maybeSingle(),
+        supabase.from("admin_accounts").select("user_id").eq("user_id", auth.user.id).maybeSingle(),
+      ]);
+      const canRequest = user?.role === "client" || Boolean(admin);
+      if (!canRequest) { setNotice("Only clients can request a DJ for a gig."); setLoading(false); return; }
+
       const [{ data: profile, error: profileError }, { data: ownGigs, error: gigsError }] = await Promise.all([
         supabase.from("dj_profiles").select("user_id, dj_name, bio, location, genres, price, profile_photo").eq("user_id", params.id).single(),
-        supabase.from("gigs").select("id, title, event_date, start_time, end_time, location, budget_min, budget_max, status").eq("client_id", auth.user.id).eq("status", "open").order("event_date")
+        supabase.from("gigs").select("id, title, event_date, start_time, end_time, location, budget_min, budget_max, status").eq("client_id", auth.user.id).eq("status", "open").order("event_date"),
       ]);
       if (profileError || !profile) setNotice(profileError?.message || "DJ not found."); else setDj(profile as DJ);
       if (!gigsError) setGigs((ownGigs as Gig[]) || []);

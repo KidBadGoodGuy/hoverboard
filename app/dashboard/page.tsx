@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "../../lib/supabase/client";
+import CheckoutForm from "../payments/checkout-form";
 
 type Role = "dj" | "client";
 type Gig = { id: string; title: string; description: string | null; event_date: string; start_time: string | null; end_time: string | null; location: string; budget_min: number | null; budget_max: number | null; genres: string[]; status: string };
@@ -19,6 +20,11 @@ export default function Dashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [message, setMessage] = useState("");
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [checkoutBookingId, setCheckoutBookingId] = useState<string | null>(null);
+
+  const handleCheckoutMessage = useCallback((checkoutMessage: string) => {
+    setMessage(checkoutMessage);
+  }, []);
 
   async function ensureProfile(supabase: ReturnType<typeof getSupabaseBrowserClient>, authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }) {
     const metadataRole = authUser.user_metadata?.role === "client" ? "client" : "dj";
@@ -87,15 +93,8 @@ export default function Dashboard() {
     if (payingId) return;
     setPayingId(bookingId);
     setMessage("");
-    try {
-      const response = await fetch("/api/payments/create-checkout-session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bookingId }) });
-      const result = await response.json();
-      if (!response.ok || !result.url) throw new Error(result.error || "We couldn't start checkout.");
-      window.location.assign(result.url);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "We couldn't start payment.");
-      setPayingId(null);
-    }
+    setCheckoutBookingId(bookingId);
+    setPayingId(null);
   }
 
   async function decideApplication(application: Application, decision: "accepted" | "rejected") {
@@ -147,8 +146,9 @@ export default function Dashboard() {
           <div className="gig-grid">{bookings.length ? bookings.map((booking) => <article className="card gig-card booking-card" key={booking.id}>
             <span className={`status-pill ${booking.status === "confirmed" || booking.status === "paid" ? "blue" : ""}`}>{booking.status === "accepted" ? "Payment ready" : booking.status}</span>
             <h3>{booking.event_date}</h3><p>{booking.start_time} – {booking.end_time}</p><p><strong>{booking.location}</strong></p><p>Booking total: ${Number(booking.price).toFixed(2)}</p>
-            {role === "client" && booking.status === "accepted" && <button className="primary" disabled={payingId === booking.id} onClick={() => void payForBooking(booking.id)}>{payingId === booking.id ? "Opening checkout…" : "Pay securely"}</button>}
+            {role === "client" && booking.status === "accepted" && <button className="primary" disabled={payingId === booking.id} onClick={() => void payForBooking(booking.id)}>{payingId === booking.id ? "Opening secure form…" : checkoutBookingId === booking.id ? "Secure form below" : "Pay securely"}</button>}
             {booking.status === "confirmed" && <span className="status-pill blue">Payment complete</span>}
+            {checkoutBookingId === booking.id && role === "client" && booking.status === "accepted" && <CheckoutForm bookingId={booking.id} onMessage={handleCheckoutMessage} />}
           </article>) : <div className="card"><p>No upcoming bookings yet.</p></div>}</div>
         </section>
 

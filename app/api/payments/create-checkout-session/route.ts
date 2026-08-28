@@ -3,8 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "edge";
 
-const SITE_URL = "https://hoverboard.arjun-singh.com";
-
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -36,9 +34,13 @@ export async function POST(request: Request) {
     }
 
     const body = new URLSearchParams();
+    body.set("ui_mode", "form");
     body.set("mode", "payment");
-    body.set("success_url", `${SITE_URL}/dashboard?payment=success&booking_id=${booking.id}`);
-    body.set("cancel_url", `${SITE_URL}/dashboard?payment=cancelled&booking_id=${booking.id}`);
+    body.set("billing_address_collection", "auto");
+    body.set("phone_number_collection[enabled]", "false");
+    body.set("automatic_tax[enabled]", "false");
+    body.set("submit_type", "auto");
+    body.set("integration_identifier", "custom_embedded_web_0001");
     body.set("client_reference_id", booking.id);
     body.set("metadata[booking_id]", booking.id);
     body.set("line_items[0][price_data][currency]", "usd");
@@ -49,11 +51,15 @@ export async function POST(request: Request) {
 
     const stripeResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Stripe-Version": "2026-03-25.dahlia; custom_checkout_payment_form_preview=v1",
+      },
       body,
     });
     const stripe = await stripeResponse.json();
-    if (!stripeResponse.ok || !stripe.url) {
+    if (!stripeResponse.ok || !stripe.client_secret) {
       return NextResponse.json({ error: stripe?.error?.message || "Stripe could not create checkout." }, { status: 502 });
     }
 
@@ -64,7 +70,7 @@ export async function POST(request: Request) {
       .eq("client_id", user.id);
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
-    return NextResponse.json({ url: stripe.url });
+    return NextResponse.json({ client_secret: stripe.client_secret });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Payment setup failed." }, { status: 500 });
   }

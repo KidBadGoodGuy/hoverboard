@@ -41,7 +41,7 @@ export default function AdminClientPage() {
 
   return (
     <main className="dashboard-page">
-      <header className="topbar"><div><span className="brand">HOVERBOARD</span><span className="muted"> · Admin Client Mode</span></div><div className="topbar-actions"><Link className="button" href="/admin/command-center">Command Center</Link><Link className="button" href="/dashboard">DJ Dashboard</Link></div></header>
+      <header className="topbar"><div><span className="brand">HOVERBOARD</span><span className="muted"> · Admin Client Mode</span></div><div className="topbar-actions"><Link className="button" href="/admin/command-center">Command Center</Link><Link className="button" href="/discover">Find DJs</Link><Link className="button" href="/messages">Messages</Link><Link className="button" href="/dashboard">DJ Dashboard</Link></div></header>
       <section className="dashboard-content">
         <div className="hero-small"><p className="eyebrow">CLIENT MODE</p><h1>Book a DJ.</h1><p>You are using the Client side of the admin account.</p></div>
         {message && <div className="notice">{message}</div>}

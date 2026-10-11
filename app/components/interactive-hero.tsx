@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { PointerEvent } from "react";
 
 const bars = Array.from({ length: 37 }, (_, i) => ({
   id: i,
@@ -13,7 +14,7 @@ export default function InteractiveHero() {
   const [isHovering, setIsHovering] = useState(false);
   const [pulseMode, setPulseMode] = useState(false);
 
-  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === "touch") return;
     const bounds = event.currentTarget.getBoundingClientRect();
     setPointer({

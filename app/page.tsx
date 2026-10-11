@@ -7,19 +7,22 @@ import { getSupabaseBrowserClient } from "../lib/supabase/client";
 
 export default function HomePage() {
   const router = useRouter();
-  const [checking, setChecking] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+
     async function checkSession() {
-      const supabase = getSupabaseBrowserClient();
-      const { data } = await supabase.auth.getSession();
-      if (mounted) {
-        setLoggedIn(Boolean(data.session));
-        setChecking(false);
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data } = await supabase.auth.getSession();
+        if (mounted) setLoggedIn(Boolean(data.session));
+      } catch {
+        // Keep the public entry buttons available if session lookup fails.
+        if (mounted) setLoggedIn(false);
       }
     }
+
     void checkSession();
     return () => { mounted = false; };
   }, []);
@@ -31,9 +34,7 @@ export default function HomePage() {
         <h1>Find the Gig.<br />It’s on the Board.</h1>
         <p className="subtitle">DJ gigs and bookings, all in one place.</p>
         <div className="actions">
-          {checking ? (
-            <span className="button primary">Loading…</span>
-          ) : loggedIn ? (
+          {loggedIn ? (
             <Link className="primary button" href="/dashboard">Go to dashboard</Link>
           ) : (
             <>

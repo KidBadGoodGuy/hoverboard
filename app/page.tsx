@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabase/client";
 
 export default function HomePage() {
-  const router = useRouter();
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {

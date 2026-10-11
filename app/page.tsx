@@ -1,4 +1,5 @@
 import Link from "next/link";
+import InteractiveHero from "./components/interactive-hero";
 
 export default function HomePage() {
   return (
@@ -16,17 +17,7 @@ export default function HomePage() {
           </div>
           <p className="hero-footnote">One platform. Two sides. Better gigs.</p>
         </div>
-        <div className="hero-art" aria-label="HOVERBOARD platform highlights">
-          <div className="orbit orbit-one" />
-          <div className="orbit orbit-two" />
-          <div className="hero-art-top"><span className="mini-mark">H</span><span>HOVERBOARD / V1</span><span className="live-dot" /></div>
-          <div className="sound-wave" aria-hidden="true">
-            {Array.from({ length: 31 }, (_, i) => <span key={i} style={{ height: `${18 + Math.abs(Math.sin(i * 0.63)) * (i % 4 === 0 ? 74 : 48)}px` }} />)}
-          </div>
-          <div className="hero-art-caption"><span className="caption-kicker">YOUR NEXT CHAPTER</span><strong>Starts with a booking.</strong><span className="caption-line">DISCOVER <i /> CONNECT <i /> PLAY</span></div>
-          <div className="floating-chip chip-top"><span className="chip-icon">↗</span><span><strong>Find your next gig</strong><small>Make the connection</small></span></div>
-          <div className="floating-chip chip-bottom"><span className="chip-icon chip-icon-blue">✓</span><span><strong>Booking, simplified</strong><small>From request to confirmed</small></span></div>
-        </div>
+        <InteractiveHero />
       </section>
 
       <section className="home-proof">
